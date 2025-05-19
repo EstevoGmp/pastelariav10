@@ -55,6 +55,14 @@ const menuData = [
       pequeno: 12.0,
       grande: 16.0,
     },
+    flavors: {
+      polvilhar: "Polvilhado no Açúcar e canela",
+      "sem polvilhar": "Sem polvilhar no açúcar e canela",
+    },
+    flavorPrices: {
+      "sem polvilhar": 0.0,
+      polvilhar: 0.0,
+    },
     description: "Polvilhado com açúcar e canela",
     hasImage: false,
     acceptsObservation: true,
@@ -99,7 +107,7 @@ const menuData = [
       pequeno: 13.0,
       grande: 20.0,
     },
-    description: "Tomate, orégano e Requeijão",
+    description: "c/ tomate, orégano e Requeijão",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -191,7 +199,7 @@ const menuData = [
       pequeno: 13.0,
       grande: 20.0,
     },
-    description: "Com Alho Poró e Requeijão",
+    description: "c/ alho Poró e Requeijão",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -202,7 +210,7 @@ const menuData = [
       pequeno: 13.0,
       grande: 20.0,
     },
-    description: "Milho e tomate seco",
+    description: "c/ ilho e tomate seco",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -287,6 +295,15 @@ const menuData = [
       pequeno: 13.0,
       grande: 20.0,
     },
+    flavors: {
+      polvilhar: "Polvilhado no Açúcar e canela",
+      "sem polvilhar": "Sem polvilhar no açúcar e canela",
+    },
+    flavorPrices: {
+      "sem polvilhar": 0.0,
+      polvilhar: 0.0,
+    },
+    description: "Polvilhado com açúcar e canela",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -297,6 +314,15 @@ const menuData = [
       pequeno: 13.0,
       grande: 20.0,
     },
+    flavors: {
+      polvilhar: "Polvilhado no Açúcar e canela",
+      "sem polvilhar": "Sem polvilhar no açúcar e canela",
+    },
+    flavorPrices: {
+      "sem polvilhar": 0.0,
+      polvilhar: 0.0,
+    },
+    description: "Polvilhado com açúcar e canela",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -307,6 +333,15 @@ const menuData = [
       pequeno: 13.0,
       grande: 20.0,
     },
+    flavors: {
+      polvilhar: "Polvilhado no Açúcar e canela",
+      "sem polvilhar": "Sem polvilhar no açúcar e canela",
+    },
+    flavorPrices: {
+      "sem polvilhar": 0.0,
+      polvilhar: 0.0,
+    },
+    description: "Banana, canela e doce de leite",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -359,7 +394,7 @@ const menuData = [
       pequeno: 15.0,
       grande: 24.0,
     },
-    description: "Com requeijão e vinagrete",
+    description: "C/ requeijão e vinagrete",
     hasImage: false,
     acceptsObservation: true,
   },
@@ -500,21 +535,41 @@ const menuData = [
   {
     name: "Halls",
     category: "diferente",
-    sizes: {
-      unico: 3.0,
+    basePrice: 3.0,
+    flavors: {
+      "extra forte": "Extra forte",
+      menta: "Menta",
+      cereja: "Cereja",
+      melancia: "Melancia",
     },
-    description: "Halls - Preto, Morango e Etc",
+    flavorPrices: {
+      "extra forte": 0.0,
+      menta: 0.0,
+      cereja: 0.0,
+      melancia: 0.0,
+    },
+    description: "Halls - Extra forte, Menta, Cereja e Melancia",
     hasImage: true,
     image: "assets/halls.png",
     acceptsObservation: true,
   },
   {
-    name: "Trident - Morango, Melância ou Menta",
+    name: "Trident",
     category: "diferente",
-    sizes: {
-      unico: 3.0,
+    basePrice: 3.0,
+    flavors: {
+      menta: "Menta",
+      hortelã: "Hortelã",
+      canela: "Canela",
+      morango: "Morango",
     },
-    description: "Trident - Morango, Melância ou Menta",
+    flavorPrices: {
+      menta: 0.0,
+      hortelã: 0.0,
+      canela: 0.0,
+      morango: 0.0,
+    },
+    description: "Trident - Morango, Canela, Hortelã e Menta",
     hasImage: true,
     image: "assets/trident.png",
     acceptsObservation: true,
@@ -1118,6 +1173,11 @@ function loadMenuItems() {
 
     let menuItemHTML = "";
 
+    // Adiciona a descrição se existir
+    const descriptionHTML = item.description
+      ? `<div class="menu-item-description">${item.description}</div>`
+      : "";
+
     if (item.hasImage) {
       menuItemHTML = `
         <div class="menu-item-image">
@@ -1125,6 +1185,7 @@ function loadMenuItems() {
         </div>
         <div class="menu-item-content">
           <h3 class="menu-item-title">${item.name}</h3>
+          ${descriptionHTML}
           <div class="menu-item-prices">
           ${generateSizesHTML(item.sizes, item)}
           </div>
@@ -1140,6 +1201,7 @@ function loadMenuItems() {
       menuItemHTML = `
         <div class="menu-item-content" style="padding: 1.5rem;">
           <h3 class="menu-item-title">${item.name}</h3>
+          ${descriptionHTML}
           <div class="menu-item-prices">
           ${generateSizesHTML(item.sizes, item)}
           </div>

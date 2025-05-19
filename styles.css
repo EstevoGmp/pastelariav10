@@ -35,6 +35,13 @@ body {
   align-items: center;
 }
 
+.menu-item-description {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0.5rem 0;
+  line-height: 1.4;
+}
+
 /* Estilo dos ícones */
 .loading-icons {
   display: flex;
