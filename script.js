@@ -864,6 +864,15 @@ const categories = [
     icon: "fa-solid fa-cookie",
   },
 ];
+let increaseInterval;
+let decreaseInterval;
+let isMouseDown = false;
+
+// Variáveis globais para controle
+let holdInterval = null;
+let holdTimeout = null;
+const HOLD_DELAY = 300;
+const HOLD_INTERVAL = 100;
 
 let state = {
   cart: [],
@@ -897,7 +906,6 @@ const DOM = {
   overlay: document.querySelector(".overlay"),
   orderBtn: document.querySelector(".order-btn"),
 };
-
 // Inicialização
 function init() {
   setTimeout(() => {
@@ -913,6 +921,132 @@ function init() {
   updateCart();
 
   loadCart();
+
+  DOM.increaseQty.onclick = null;
+  DOM.decreaseQty.onclick = null;
+  document.addEventListener("mouseup", stopHold);
+  document.addEventListener("touchend", stopHold);
+  window.addEventListener("blur", stopHold);
+
+  DOM.observationModal.addEventListener("open", () => {
+    setupModalButtonListeners();
+  });
+}
+
+function performQuantityAction(action, index = null) {
+  if (index !== null) {
+    const item = state.cart[index];
+    if (!item) return;
+
+    if (action === "increase") {
+      if (item.quantity >= 100) {
+        mostrarToast(
+          `O item ${item.name} atingiu o limite máximo de 100 unidades!`
+        );
+        stopHold();
+        return;
+      }
+      item.quantity += 1;
+    } else if (action === "decrease") {
+      if (item.quantity > 1) {
+        item.quantity -= 1;
+      } else {
+        state.cart.splice(index, 1);
+      }
+    }
+    updateCart();
+    saveCart();
+  } else {
+    let quantity = parseInt(DOM.quantityValue.textContent);
+    if (action === "increase") {
+      if (quantity < 100) {
+        DOM.quantityValue.textContent = quantity + 1;
+      } else {
+        mostrarToast("Quantidade máxima de 100 unidades atingida!");
+        stopHold();
+      }
+    } else if (quantity > 1) {
+      DOM.quantityValue.textContent = quantity - 1;
+    }
+  }
+}
+
+function startHold(action, index = null) {
+  // Cancela qualquer intervalo existente
+  stopHold();
+
+  // Executa a ação imediatamente apenas se for um hold (não click simples)
+  if (!this.isClick) {
+    performQuantityAction(action, index);
+  }
+
+  // Configura o intervalo para repetição
+  holdTimeout = setTimeout(() => {
+    this.isHold = true;
+    holdInterval = setInterval(() => {
+      performQuantityAction(action, index);
+    }, HOLD_INTERVAL);
+  }, HOLD_DELAY);
+}
+
+function stopHold() {
+  if (holdTimeout) clearTimeout(holdTimeout);
+  if (holdInterval) clearInterval(holdInterval);
+  holdTimeout = null;
+  holdInterval = null;
+}
+
+function increaseQuantity() {
+  let quantity = parseInt(DOM.quantityValue.textContent);
+  if (quantity < 100) {
+    quantity += 1;
+    DOM.quantityValue.textContent = quantity;
+  } else {
+    mostrarToast("Quantidade máxima de 100 unidades atingida!");
+    stopHold();
+  }
+}
+
+function decreaseQuantity() {
+  let quantity = parseInt(DOM.quantityValue.textContent);
+  if (quantity > 1) {
+    quantity -= 1;
+    DOM.quantityValue.textContent = quantity;
+  } else {
+    stopHold();
+  }
+}
+
+function setupModalButtonListeners() {
+  const setupButton = (element, action) => {
+    // Remove event listeners antigos para evitar duplicação
+    element.replaceWith(element.cloneNode(true));
+    const newElement = element;
+
+    // Mouse events
+    newElement.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      startHold(action);
+    });
+
+    newElement.addEventListener("mouseup", stopHold);
+    newElement.addEventListener("mouseleave", stopHold);
+
+    // Touch events
+    newElement.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      startHold(action);
+    });
+
+    newElement.addEventListener("touchend", stopHold);
+    newElement.addEventListener("touchcancel", stopHold);
+
+    // Remove qualquer listener de click existente
+    newElement.onclick = null;
+  };
+
+  setupButton(DOM.increaseQty, "increase");
+  setupButton(DOM.decreaseQty, "decrease");
 }
 
 function saveCart() {
@@ -944,7 +1078,6 @@ function loadCategories() {
   });
   DOM.categoryButtons.appendChild(allButton);
 
-  // Adicionar categorias
   categories.forEach((category) => {
     const button = document.createElement("button");
     button.className = "category-btn";
@@ -1042,9 +1175,7 @@ function generateSizesHTML(sizes, item) {
           .replace(".", ",")}</span>
       </div>
     `;
-  }
-  // Se o item tem tamanhos
-  else if (sizes && Object.keys(sizes).length > 0) {
+  } else if (sizes && Object.keys(sizes).length > 0) {
     for (const [size, price] of Object.entries(sizes)) {
       const sizeName =
         size === "pequeno"
@@ -1153,6 +1284,11 @@ function addToCart(itemData) {
     basePrice,
   } = itemData;
 
+  if (quantity > 100) {
+    mostrarToast(`O item ${name} atingiu a quantidade máxima de 100 unidades!`);
+    return;
+  }
+
   let price = 0;
   if (selectedSize) {
     price = sizes[selectedSize];
@@ -1178,7 +1314,14 @@ function addToCart(itemData) {
   );
 
   if (existingItemIndex !== -1) {
-    state.cart[existingItemIndex].quantity += quantity;
+    const newQuantity = state.cart[existingItemIndex].quantity + quantity;
+    if (newQuantity > 100) {
+      mostrarToast(
+        `O item ${name} atingiu a quantidade máxima de 100 unidades!`
+      );
+      return;
+    }
+    state.cart[existingItemIndex].quantity = newQuantity;
   } else {
     state.cart.push({
       ...itemData,
@@ -1193,108 +1336,173 @@ function addToCart(itemData) {
   saveCart();
 
   mostrarToast(`${quantity}x ${name} adicionado ao carrinho!`);
-  return;
 }
 
 function updateCart() {
   const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
   DOM.cartCount.textContent = totalItems;
 
-  DOM.cartItems.innerHTML = "";
-
   if (state.cart.length === 0) {
-    DOM.cartItems.innerHTML = `
-      <div class="empty-cart">
-        <i class="fas fa-shopping-basket"></i>
-        <p>Seu carrinho está vazio</p>
-      </div>
-    `;
+    if (!DOM.cartItems.querySelector(".empty-cart")) {
+      DOM.cartItems.innerHTML = `
+        <div class="empty-cart">
+          <i class="fas fa-shopping-basket"></i>
+          <p>Seu carrinho está vazio</p>
+        </div>
+      `;
+    }
     DOM.cartTotal.textContent = "R$ 0,00";
     return;
+  }
+
+  const emptyCart = DOM.cartItems.querySelector(".empty-cart");
+  if (emptyCart) {
+    emptyCart.remove();
   }
 
   let totalPrice = 0;
 
   state.cart.forEach((item, index) => {
-    const cartItem = document.createElement("div");
-    cartItem.className = "cart-item slide-up";
+    totalPrice += item.price * item.quantity;
 
-    const itemPrice = item.price * item.quantity;
-    totalPrice += itemPrice;
+    let cartItem = DOM.cartItems.querySelector(`[data-index="${index}"]`);
 
-    let optionText = "";
-    if (item.selectedSize) {
-      optionText =
-        item.selectedSize === "pequeno"
-          ? "Pequeno"
-          : item.selectedSize === "grande"
-          ? "Grande"
-          : item.selectedSize === "unico"
-          ? "Único"
-          : item.selectedSize === "300ml"
-          ? "300ml"
-          : item.selectedSize === "500ml"
-          ? "500ml"
-          : item.selectedSize;
+    if (!cartItem) {
+      cartItem = createCartItem(item, index);
+      DOM.cartItems.appendChild(cartItem);
+    } else {
+      updateCartItem(cartItem, item, index);
     }
-    if (item.selectedFlavor) {
-      if (optionText) optionText += " - ";
-      optionText += item.flavors
-        ? item.flavors[item.selectedFlavor]
-        : item.selectedFlavor;
+  });
+
+  const existingIndices = state.cart.map((_, i) => i.toString());
+  document.querySelectorAll(".cart-item[data-index]").forEach((item) => {
+    if (!existingIndices.includes(item.dataset.index)) {
+      item.remove();
     }
-
-    cartItem.innerHTML = `
-      <div class="cart-item-info">
-        <div class="cart-item-name">${item.name}</div>
-        ${optionText ? `<div class="cart-item-size">${optionText}</div>` : ""}
-        ${
-          item.notes
-            ? `<div class="cart-item-notes break-word">Obs: ${item.notes}</div>`
-            : ""
-        }
-      </div>
-      <div class="cart-item-controls">
-        <div class="cart-item-price">R$ ${itemPrice
-          .toFixed(2)
-          .replace(".", ",")}</div>
-        <div class="cart-item-quantity">
-          <button class="quantity-btn ${item.quantity === 1 ? "remove" : ""}" 
-                  data-index="${index}" data-action="decrease">
-            <i class="fas ${item.quantity === 1 ? "fa-trash" : "fa-minus"}"></i>
-          </button>
-          <span class="cart-item-quantity-value">${item.quantity}</span>
-          <button class="quantity-btn" data-index="${index}" data-action="increase">
-            <i class="fas fa-plus"></i>
-          </button>
-        </div>
-      </div>
-    `;
-
-    DOM.cartItems.appendChild(cartItem);
   });
 
   DOM.cartTotal.textContent = `R$ ${totalPrice.toFixed(2).replace(".", ",")}`;
+}
 
-  document.querySelectorAll(".quantity-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const index = parseInt(btn.dataset.index);
-      const action = btn.dataset.action;
+function createCartItem(item, index) {
+  const cartItem = document.createElement("div");
+  cartItem.className = "cart-item slide-up";
+  cartItem.dataset.index = index;
 
-      if (action === "increase") {
-        state.cart[index].quantity += 1;
-      } else if (action === "decrease") {
-        if (state.cart[index].quantity > 1) {
-          state.cart[index].quantity -= 1;
-        } else {
-          state.cart.splice(index, 1);
-        }
+  const itemPrice = item.price * item.quantity;
+
+  let optionText = "";
+  if (item.selectedSize) {
+    optionText =
+      item.selectedSize === "pequeno"
+        ? "Pequeno"
+        : item.selectedSize === "grande"
+        ? "Grande"
+        : item.selectedSize === "unico"
+        ? "Único"
+        : item.selectedSize === "300ml"
+        ? "300ml"
+        : item.selectedSize === "500ml"
+        ? "500ml"
+        : item.selectedSize;
+  }
+  if (item.selectedFlavor) {
+    if (optionText) optionText += " - ";
+    optionText += item.flavors
+      ? item.flavors[item.selectedFlavor]
+      : item.selectedFlavor;
+  }
+
+  cartItem.innerHTML = `
+    <div class="cart-item-info">
+      <div class="cart-item-name">${item.name}</div>
+      ${optionText ? `<div class="cart-item-size">${optionText}</div>` : ""}
+      ${
+        item.notes
+          ? `<div class="cart-item-notes break-word">Obs: ${item.notes}</div>`
+          : ""
       }
+    </div>
+    <div class="cart-item-controls">
+      <div class="cart-item-price">R$ ${itemPrice
+        .toFixed(2)
+        .replace(".", ",")}</div>
+      <div class="cart-item-quantity">
+        <button class="quantity-btn ${item.quantity === 1 ? "remove" : ""}" 
+                data-index="${index}" data-action="decrease">
+          <i class="fas ${item.quantity === 1 ? "fa-trash" : "fa-minus"}"></i>
+        </button>
+        <span class="cart-item-quantity-value">${item.quantity}</span>
+        <button class="quantity-btn" data-index="${index}" data-action="increase">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
+  `;
 
-      updateCart();
-      saveCart();
+  addQuantityButtonListeners(cartItem, index);
+  return cartItem;
+}
+
+function updateCartItem(cartItem, item, index) {
+  const itemPrice = item.price * item.quantity;
+
+  cartItem.querySelector(".cart-item-quantity-value").textContent =
+    item.quantity;
+  cartItem.querySelector(".cart-item-price").textContent = `R$ ${itemPrice
+    .toFixed(2)
+    .replace(".", ",")}`;
+
+  const decreaseBtn = cartItem.querySelector('[data-action="decrease"]');
+  decreaseBtn.className = `quantity-btn ${item.quantity === 1 ? "remove" : ""}`;
+  decreaseBtn.innerHTML = `<i class="fas ${
+    item.quantity === 1 ? "fa-trash" : "fa-minus"
+  }"></i>`;
+}
+
+function addQuantityButtonListeners(element, index) {
+  const increaseBtn = element.querySelector('[data-action="increase"]');
+  const decreaseBtn = element.querySelector('[data-action="decrease"]');
+
+  const setupButton = (btn, action) => {
+    btn.addEventListener("mousedown", () => startHold(action, index));
+    btn.addEventListener("mouseup", stopHold);
+    btn.addEventListener("mouseleave", stopHold);
+
+    btn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      startHold(action, index);
     });
-  });
+    btn.addEventListener("touchend", stopHold);
+    btn.addEventListener("touchcancel", stopHold);
+  };
+
+  setupButton(increaseBtn, "increase");
+  setupButton(decreaseBtn, "decrease");
+}
+
+function handleQuantityClick(index, action) {
+  const item = state.cart[index];
+
+  if (action === "increase") {
+    if (item.quantity >= 100) {
+      mostrarToast(
+        `O item ${item.name} atingiu a quantidade máxima de 100 unidades!`
+      );
+      return;
+    }
+    item.quantity += 1;
+  } else if (action === "decrease") {
+    if (item.quantity > 1) {
+      item.quantity -= 1;
+    } else {
+      state.cart.splice(index, 1);
+    }
+  }
+
+  updateCart();
+  saveCart();
 }
 
 function setupEventListeners() {
@@ -1315,28 +1523,31 @@ function setupEventListeners() {
     DOM.overlay.classList.remove("open");
   });
 
-  DOM.decreaseQty.addEventListener("click", () => {
-    let quantity = parseInt(DOM.quantityValue.textContent);
-    if (quantity > 1) {
-      quantity -= 1;
-      DOM.quantityValue.textContent = quantity;
-    }
+  DOM.decreaseQty.addEventListener("mousedown", () => {
+    startHold("decrease");
   });
 
-  DOM.increaseQty.addEventListener("click", () => {
-    let quantity = parseInt(DOM.quantityValue.textContent);
-    quantity += 1;
-    DOM.quantityValue.textContent = quantity;
+  DOM.decreaseQty.addEventListener("touchstart", () => {
+    startHold("decrease");
   });
+
+  DOM.increaseQty.addEventListener("mousedown", () => {
+    startHold("increase");
+  });
+
+  DOM.increaseQty.addEventListener("touchstart", () => {
+    startHold("increase");
+  });
+
+  DOM.decreaseQty.addEventListener("mouseleave", stopHold);
+  DOM.increaseQty.addEventListener("mouseleave", stopHold);
 
   DOM.addToCartFinal.addEventListener("click", () => {
-    // Validação para itens com tamanho
     if (state.currentItem.sizes && !DOM.sizeSelect.value) {
       mostrarToast("Por favor, selecione um tamanho");
       return;
     }
 
-    // Validação para itens com sabor
     if (state.currentItem.flavors && !DOM.flavorSelect.value) {
       mostrarToast("Por favor, selecione um sabor");
       return;
