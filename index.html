@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Pastelaria Berbigão" />
+    <meta property="og:site_name" content="Pastelaria-Berbigao" />
+    <meta
+      property="og:image"
+      content="https://pastelariaberbigao.vercel.app/assets/logo.png"
+    />
+    <meta
+      property="og:description"
+      content="A Pastelaria Berbigão, localizada em Balneário Camboriú, SC, 
+       é famosa por seus deliciosos pastéis recheados, especialmente o tradicional pastel de
+        berbigão. Venha experimentar nossos sabores únicos e ambiente acolhedor!"
+    />
+
+    <title>Pastelaria Berbigão</title>
+    <link rel="icon" href="/assets/berbigao.ico" type="image/x-icon" />
+    <link rel="shortcut icon" href="/assets/berbigao.ico" type="image/x-icon" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Tela de Carregamento -->
+    <div class="loading-screen">
+      <div class="loading-icons">
+        <i class="fas fa-anchor ancora"></i>
+        <i class="fas fa-anchor ancora"></i>
+        <i class="fas fa-anchor ancora"></i>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header>
+      <div
+        class="logo"
+        onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+      >
+        <img class="boneco" src="assets/boneco.svg" alt="" />
+        <h1>Pastelaria Berbigão</h1>
+      </div>
+      <button class="cart-btn">
+        <i class="fas fa-shopping-cart"></i>
+        <span>Carrinho</span>
+        <span class="cart-count">0</span>
+      </button>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <h2>Os melhores pastéis da região!</h2>
+      <p>
+        Faça seu pedido pelo WhatsApp e escolha entre entrega em domicílio ou
+        consumo no local. Na Pastelaria Berbigão, garantimos sabor, qualidade e
+        atendimento personalizado. As formas de pagamento são definidas
+        diretamente na conversa.
+      </p>
+      <button class="order-btn">
+        <i class="fas fa-utensils"></i>
+        Fazer Pedido
+      </button>
+    </section>
+
+    <!-- Categorias -->
+    <section class="categories">
+      <h2>Nossas Categorias</h2>
+
+      <div class="category-buttons">
+        <!-- Categorias serão geradas via JavaScript -->
+      </div>
+    </section>
+
+    <!-- Menu -->
+    <section class="menu">
+      <h2 id="menu-title">Cardápio</h2>
+      <div class="menu-grid">
+        <!-- Itens do menu serão gerados via JavaScript -->
+      </div>
+    </section>
+
+    <!-- Modal Carrinho -->
+    <div class="cart-modal">
+      <div class="cart-header">
+        <h3>Seu Carrinho</h3>
+        <button class="close-cart">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="cart-items">
+        <!-- Itens do carrinho serão gerados via JavaScript -->
+        <div class="empty-cart">
+          <i class="fas fa-shopping-basket"></i>
+          <p>Seu carrinho está vazio</p>
+        </div>
+      </div>
+      <div class="cart-footer">
+        <div class="cart-total">
+          <span>Total:</span>
+          <span class="total-price">R$ 0,00</span>
+        </div>
+        <button class="checkout-btn">
+          <i class="fab fa-whatsapp"></i>
+          Finalizar pelo WhatsApp
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Observação -->
+    <div class="observation-modal">
+      <div class="observation-content">
+        <div class="observation-header">
+          <h3>Adicionar ao Carrinho</h3>
+          <button class="close-observation">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form class="observation-form">
+          <div class="form-group">
+            <label for="size">Opção</label>
+            <select id="size" required>
+              <option value="">Selecione um tamanho</option>
+            </select>
+            <select id="flavor" style="display: none">
+              <option value="">Selecione um sabor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="notes">Observações <small>(opcional)</small></label>
+            <textarea
+              maxlength="140"
+              rows="5"
+              id="notes"
+              placeholder="Ex: Sem cebola, mais crocante..."
+              style="resize: none"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label>Quantidade</label>
+            <div class="quantity-controls">
+              <button type="button" class="quantity-btn-large decrease-qty">
+                <i class="fas fa-minus"></i>
+              </button>
+              <span class="quantity-value">1</span>
+              <button type="button" class="quantity-btn-large increase-qty">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <button type="button" class="add-to-cart-final">
+            <i class="fas fa-cart-plus"></i>
+            Adicionar ao Carrinho
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Overlay -->
+    <div class="overlay"></div>
+
+    <!-- Footer -->
+    <footer>
+      <div class="footer-content">
+        <p>Pastelaria Berbigão - Pastelaria com sabor do mar</p>
+        <p>Faça seu pedido pelo WhatsApp e receba em casa!</p>
+        <div class="social-links">
+          <a
+            href="https://wa.me/5547996624439"
+            class="social-link"
+            target="_blank"
+            ><i class="fab fa-whatsapp"></i
+          ></a>
+          <a
+            href="https://www.instagram.com/pastelariaberbigao/"
+            target="_blank"
+            class="social-link"
+            ><i class="fab fa-instagram"></i
+          ></a>
+          <a
+            href="https://www.facebook.com/berbigaobc/"
+            target="_blank"
+            class="social-link"
+            ><i class="fab fa-facebook"></i
+          ></a>
+        </div>
+        <p class="copyright">
+          © 2025 Pastelaria Berbigão. Todos os direitos reservados.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Botão Voltar ao Topo -->
+    <button id="btnTopo" title="Voltar ao topo">
+      <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <script src="script.js"></script>
+  </body>
+</html>
