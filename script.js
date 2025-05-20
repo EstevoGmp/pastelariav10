@@ -923,6 +923,11 @@ let holdTimeout = null;
 const HOLD_DELAY = 300;
 const HOLD_INTERVAL = 100;
 
+
+let isScrollLocked = false;
+let scrollPosition = 0;
+
+
 let state = {
   cart: [],
   currentItem: null,
@@ -956,6 +961,29 @@ const DOM = {
   overlay: document.querySelector(".overlay"),
   orderBtn: document.querySelector(".order-btn"),
 };
+
+
+function lockBodyScroll() {
+  if (isScrollLocked) return;
+
+  scrollPosition = window.pageYOffset;
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${scrollPosition}px`;
+  document.body.style.width = "100%";
+  isScrollLocked = true;
+}
+
+function unlockBodyScroll() {
+  if (!isScrollLocked) return;
+
+  document.body.style.overflow = "";
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.width = "";
+  window.scrollTo(0, scrollPosition);
+  isScrollLocked = false;
+}
 
 // Funções de controle de quantidade
 function performQuantityAction(action, index = null) {
@@ -1077,7 +1105,6 @@ function updateCart() {
     return;
   }
 
-  // Remove mensagem de carrinho vazio se existir
   const emptyCart = DOM.cartItems.querySelector(".empty-cart");
   if (emptyCart) {
     emptyCart.remove();
@@ -1086,28 +1113,23 @@ function updateCart() {
   let totalPrice = 0;
   const fragment = document.createDocumentFragment();
 
-  // Atualiza ou cria os itens do carrinho
   state.cart.forEach((item, index) => {
     totalPrice += item.price * item.quantity;
 
     let cartItem = DOM.cartItems.querySelector(`[data-index="${index}"]`);
 
     if (!cartItem) {
-      // Se o item não existe, cria um novo
       cartItem = createCartItem(item, index);
       fragment.appendChild(cartItem);
     } else {
-      // Se o item já existe, apenas atualiza os valores
       updateCartItem(cartItem, item, index);
     }
   });
 
-  // Adiciona todos os novos itens de uma vez
   if (fragment.childNodes.length > 0) {
     DOM.cartItems.appendChild(fragment);
   }
 
-  // Remove itens que não existem mais no state.cart
   const existingIndices = state.cart.map((_, i) => i.toString());
   document.querySelectorAll(".cart-item[data-index]").forEach((item) => {
     if (!existingIndices.includes(item.dataset.index)) {
@@ -1121,7 +1143,6 @@ function updateCart() {
 function updateCartItem(cartItem, item, index) {
   const itemPrice = item.price * item.quantity;
 
-  // Atualiza apenas os elementos que mudam
   const quantityValue = cartItem.querySelector(".cart-item-quantity-value");
   const priceElement = cartItem.querySelector(".cart-item-price");
 
@@ -1134,7 +1155,6 @@ function updateCartItem(cartItem, item, index) {
     priceElement.textContent = newPrice;
   }
 
-  // Atualiza o botão de diminuir
   const decreaseBtn = cartItem.querySelector(".quantity-btn");
   const newClass = `quantity-btn ${item.quantity === 1 ? "remove" : ""}`;
 
@@ -1144,7 +1164,6 @@ function updateCartItem(cartItem, item, index) {
       item.quantity === 1 ? "fa-trash" : "fa-minus"
     }"></i>`;
 
-    // Reconfigura os listeners
     const increaseBtn = cartItem.querySelectorAll(".quantity-btn")[1];
     setupQuantityControls(decreaseBtn, "decrease", index);
     setupQuantityControls(increaseBtn, "increase", index);
@@ -1206,7 +1225,6 @@ function createCartItem(item, index) {
     </div>
   `;
 
-  // Configura listeners para os botões
   const decreaseBtn = cartItem.querySelectorAll(".quantity-btn")[0];
   const increaseBtn = cartItem.querySelectorAll(".quantity-btn")[1];
 
@@ -1216,7 +1234,6 @@ function createCartItem(item, index) {
   return cartItem;
 }
 
-// Funções do menu
 function loadCategories() {
   DOM.categoryButtons.innerHTML = "";
 
@@ -1365,7 +1382,6 @@ function generateSizesHTML(sizes, item) {
   return sizesHTML;
 }
 
-// Funções do modal de observação
 function handleAddToCart(item) {
   if (state.modalOpen) return;
   state.currentItem = item;
@@ -1383,16 +1399,20 @@ function handleAddToCart(item) {
 }
 
 function openObservationModal() {
+  lockBodyScroll();
   state.modalOpen = true;
 
+  // Reset dos valores do formulário
   DOM.sizeSelect.value = "";
   DOM.flavorSelect.value = "";
   DOM.notesTextarea.value = "";
   DOM.quantityValue.textContent = "1";
 
+  // Esconder selects inicialmente
   DOM.sizeSelect.style.display = "none";
   DOM.flavorSelect.style.display = "none";
 
+  // Configurar sabores se existirem
   if (state.currentItem.flavors) {
     DOM.flavorSelect.style.display = "flex";
     DOM.flavorSelect.innerHTML = '<option value="">Selecione um sabor</option>';
@@ -1426,9 +1446,9 @@ function openObservationModal() {
       DOM.sizeSelect.innerHTML += `<option value="${size}">${sizeName}</option>`;
     }
   }
-
   DOM.observationModal.style.display = "flex";
   DOM.overlay.style.display = "flex";
+
   setTimeout(() => {
     DOM.observationModal.classList.add("open");
     DOM.overlay.classList.add("open");
@@ -1445,8 +1465,11 @@ function closeObservationModal() {
   setTimeout(() => {
     DOM.observationModal.style.display = "none";
     DOM.overlay.style.display = "none";
+
     state.modalOpen = false;
     state.currentItem = null;
+
+    unlockBodyScroll();
   }, 300);
 }
 
@@ -1517,12 +1540,13 @@ function addToCart(itemData) {
   mostrarToast(`${quantity}x ${name} adicionado ao carrinho!`);
 }
 
-// Funções auxiliares
 function setupEventListeners() {
   DOM.cartBtn.addEventListener("click", () => {
     if (state.modalOpen) return;
-    DOM.cartModal.style.display = "block";
-    DOM.overlay.style.display = "block";
+    state.modalOpen = true;
+    DOM.cartModal.style.display = "flex";
+    DOM.overlay.style.display = "flex";
+    lockBodyScroll();
     setTimeout(() => {
       DOM.cartModal.classList.add("open");
       DOM.overlay.classList.add("open");
@@ -1535,6 +1559,8 @@ function setupEventListeners() {
     setTimeout(() => {
       DOM.cartModal.style.display = "none";
       DOM.overlay.style.display = "none";
+      state.modalOpen = false;
+      unlockBodyScroll();
     }, 300);
   });
 
@@ -1549,6 +1575,7 @@ function setupEventListeners() {
       DOM.observationModal.style.display = "none";
       DOM.overlay.style.display = "none";
       state.modalOpen = false;
+      unlockBodyScroll(); 
     }, 300);
   });
 
@@ -1666,11 +1693,9 @@ function init() {
   loadCart();
   updateCart();
 
-  // Configura os controles de quantidade iniciais
   DOM.increaseQty = setupQuantityControls(DOM.increaseQty, "increase");
   DOM.decreaseQty = setupQuantityControls(DOM.decreaseQty, "decrease");
 
-  // Adiciona um listener global para limpar estados
   document.addEventListener("mouseup", () => {
     [DOM.increaseQty, DOM.decreaseQty].forEach((btn) => {
       btn.blur();
@@ -1687,5 +1712,7 @@ function init() {
     });
   });
 }
+
+
 
 document.addEventListener("DOMContentLoaded", init);
