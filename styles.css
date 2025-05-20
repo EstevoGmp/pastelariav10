@@ -415,7 +415,7 @@ header {
   right: -100%;
   width: 100%;
   max-width: 400px;
-  height: 100vh; /* Usar viewport height */
+  height: 100%; /* Usar viewport height */
   background-color: white;
   box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
   transition: right 0.3s ease;
