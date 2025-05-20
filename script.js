@@ -923,10 +923,8 @@ let holdTimeout = null;
 const HOLD_DELAY = 300;
 const HOLD_INTERVAL = 100;
 
-
 let isScrollLocked = false;
 let scrollPosition = 0;
-
 
 let state = {
   cart: [],
@@ -961,7 +959,6 @@ const DOM = {
   overlay: document.querySelector(".overlay"),
   orderBtn: document.querySelector(".order-btn"),
 };
-
 
 function lockBodyScroll() {
   if (isScrollLocked) return;
@@ -1575,7 +1572,7 @@ function setupEventListeners() {
       DOM.observationModal.style.display = "none";
       DOM.overlay.style.display = "none";
       state.modalOpen = false;
-      unlockBodyScroll(); 
+      unlockBodyScroll();
     }, 300);
   });
 
@@ -1630,50 +1627,57 @@ function mostrarToast(mensagem) {
 
 function sendWhatsAppOrder() {
   const phoneNumber = "47996870409";
-  let message =
-    "Olá Pastelaria Berbigão! Gostaria de fazer o seguinte pedido:\n\n";
+  let message = "🍟 *Olá Pastelaria Berbigão!* 🍔\n";
+  message += "Gostaria de fazer o seguinte pedido:\n\n";
+  message += "════════════════════════\n\n";
 
   let totalPrice = 0;
 
   state.cart.forEach((item) => {
-    let optionText = "";
-    if (item.selectedSize) {
-      optionText =
-        item.selectedSize === "pequeno"
-          ? "Pequeno"
-          : item.selectedSize === "grande"
-          ? "Grande"
-          : item.selectedSize === "unico"
-          ? "Único"
-          : item.selectedSize === "300ml"
-          ? "300ml"
-          : item.selectedSize === "500ml"
-          ? "500ml"
-          : item.selectedSize;
+    let options = [];
+
+    // Adiciona tamanho apenas se não for único
+    if (item.selectedSize && item.selectedSize !== "unico") {
+      const sizeMap = {
+        pequeno: "P",
+        grande: "G",
+        "300ml": "300ml",
+        "500ml": "500ml",
+      };
+      options.push(`*${sizeMap[item.selectedSize] || item.selectedSize}*`);
     }
+
+    // Adiciona sabor se existir
     if (item.selectedFlavor) {
-      if (optionText) optionText += " - ";
-      optionText += item.flavors
+      const flavor = item.flavors
         ? item.flavors[item.selectedFlavor]
         : item.selectedFlavor;
+      options.push(flavor);
     }
 
     const itemPrice = item.price * item.quantity;
     totalPrice += itemPrice;
 
-    message += `- *${item.quantity}*x *${item.name}*`;
-    if (optionText) {
-      message += ` (${optionText})`;
+    message += `➤ *${item.quantity}x ${item.name}*`;
+
+    // Adiciona opções se existirem
+    if (options.length > 0) {
+      message += ` (${options.join(" - ")})`;
     }
+
+    // Adiciona observações se existirem
     if (item.notes) {
-      message += `\n  Obs: ${item.notes}`;
+      message += `\n   ✏ *Obs:* ${item.notes} \n`;
     }
-    message += ` - R$ ${itemPrice.toFixed(2).replace(".", ",")}\n`;
+
+    message += "\n";
   });
 
-  message += `\n*Total: R$ ${totalPrice.toFixed(2).replace(".", ",")}*`;
-  message +=
-    "\n\nPor favor, confirmem o pedido e informem as formas de pagamento disponíveis. Obrigado!";
+  message += "\n════════════════════════\n";
+  message += `💰 *TOTAL: R$ ${totalPrice.toFixed(2).replace(".", ",")}*\n\n`;
+  message += "Por favor, poderiam confirmar este pedido e me informar:\n";
+  message += "As formas de pagamento disponíveis\n\n";
+  message += "Muito obrigado!";
 
   const encodedMessage = encodeURIComponent(message);
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
@@ -1712,7 +1716,5 @@ function init() {
     });
   });
 }
-
-
 
 document.addEventListener("DOMContentLoaded", init);
