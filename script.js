@@ -589,7 +589,6 @@ const menuData = [
       "c/ gelo": "c/ Gelo",
     },
     flavorPrices: {
-      // Altera o valor final caso o sabor aumente o preço
       "c/ limão e gelo": 0.0,
       "c/ limão": 0.0,
       "c/ gelo": 0.0,
@@ -602,14 +601,13 @@ const menuData = [
   {
     name: "Caipirinha de Caldo de Cana 500ml",
     category: "bebida",
-    basePrice: 19.0, // Preço base para itens com sabores e sem tamanho
+    basePrice: 19.0,
     flavors: {
       gin: "Gin",
       wodka: "Wodka",
       cachaça: "Cachaça",
     },
     flavorPrices: {
-      // Altera o valor final caso o sabor aumente o preço
       gin: 0.0,
       wodka: 0.0,
       cachaça: 0.0,
@@ -618,7 +616,6 @@ const menuData = [
     image: "assets/caipirinha.svg",
     acceptsObservation: true,
   },
-
   {
     name: "Água s/ Gás",
     category: "bebida",
@@ -919,9 +916,6 @@ const categories = [
     icon: "fa-solid fa-cookie",
   },
 ];
-let increaseInterval;
-let decreaseInterval;
-let isMouseDown = false;
 
 // Variáveis globais para controle
 let holdInterval = null;
@@ -933,6 +927,7 @@ let state = {
   cart: [],
   currentItem: null,
   selectedCategory: null,
+  modalOpen: false,
 };
 
 // Elementos DOM
@@ -961,37 +956,21 @@ const DOM = {
   overlay: document.querySelector(".overlay"),
   orderBtn: document.querySelector(".order-btn"),
 };
-// Inicialização
-function init() {
-  setTimeout(() => {
-    DOM.loadingScreen.style.display = "none";
-  }, 500);
 
-  loadCategories();
-
-  loadMenuItems();
-
-  setupEventListeners();
-
-  updateCart();
-
-  loadCart();
-
-  DOM.increaseQty.onclick = null;
-  DOM.decreaseQty.onclick = null;
-  document.addEventListener("mouseup", stopHold);
-  document.addEventListener("touchend", stopHold);
-  window.addEventListener("blur", stopHold);
-
-  DOM.observationModal.addEventListener("open", () => {
-    setupModalButtonListeners();
-  });
-}
-
+// Funções de controle de quantidade
 function performQuantityAction(action, index = null) {
   if (index !== null) {
+    // Verifica se o índice ainda é válido
+    if (index >= state.cart.length) {
+      stopHold();
+      return;
+    }
+
     const item = state.cart[index];
-    if (!item) return;
+    if (!item) {
+      stopHold();
+      return;
+    }
 
     if (action === "increase") {
       if (item.quantity >= 100) {
@@ -1006,7 +985,12 @@ function performQuantityAction(action, index = null) {
       if (item.quantity > 1) {
         item.quantity -= 1;
       } else {
+        // Remove o item e atualiza o carrinho imediatamente
         state.cart.splice(index, 1);
+        updateCart();
+        saveCart();
+        stopHold();
+        return; // Importante: sair da função após remover o item
       }
     }
     updateCart();
@@ -1026,84 +1010,44 @@ function performQuantityAction(action, index = null) {
   }
 }
 
-function startHold(action, index = null) {
-  // Cancela qualquer intervalo existente
-  stopHold();
-
-  // Executa a ação imediatamente apenas se for um hold (não click simples)
-  if (!this.isClick) {
-    performQuantityAction(action, index);
-  }
-
-  // Configura o intervalo para repetição
-  holdTimeout = setTimeout(() => {
-    this.isHold = true;
-    holdInterval = setInterval(() => {
-      performQuantityAction(action, index);
-    }, HOLD_INTERVAL);
-  }, HOLD_DELAY);
-}
-
 function stopHold() {
-  if (holdTimeout) clearTimeout(holdTimeout);
-  if (holdInterval) clearInterval(holdInterval);
+  clearTimeout(holdTimeout);
+  clearInterval(holdInterval);
   holdTimeout = null;
   holdInterval = null;
 }
 
-function increaseQuantity() {
-  let quantity = parseInt(DOM.quantityValue.textContent);
-  if (quantity < 100) {
-    quantity += 1;
-    DOM.quantityValue.textContent = quantity;
-  } else {
-    mostrarToast("Quantidade máxima de 100 unidades atingida!");
-    stopHold();
-  }
-}
+function setupQuantityControls(element, action, index = null) {
+  // Remove listeners antigos
+  const newElement = element.cloneNode(true);
+  element.replaceWith(newElement);
 
-function decreaseQuantity() {
-  let quantity = parseInt(DOM.quantityValue.textContent);
-  if (quantity > 1) {
-    quantity -= 1;
-    DOM.quantityValue.textContent = quantity;
-  } else {
-    stopHold();
-  }
-}
-
-function setupModalButtonListeners() {
-  const setupButton = (element, action) => {
-    // Remove event listeners antigos para evitar duplicação
-    element.replaceWith(element.cloneNode(true));
-    const newElement = element;
-
-    // Mouse events
-    newElement.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      startHold(action);
-    });
-
-    newElement.addEventListener("mouseup", stopHold);
-    newElement.addEventListener("mouseleave", stopHold);
-
-    // Touch events
-    newElement.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      startHold(action);
-    });
-
-    newElement.addEventListener("touchend", stopHold);
-    newElement.addEventListener("touchcancel", stopHold);
-
-    // Remove qualquer listener de click existente
-    newElement.onclick = null;
+  // Configura novos listeners
+  const startAction = (e) => {
+    e.preventDefault();
+    performQuantityAction(action, index);
+    holdTimeout = setTimeout(() => {
+      holdInterval = setInterval(
+        () => performQuantityAction(action, index),
+        HOLD_INTERVAL
+      );
+    }, HOLD_DELAY);
   };
 
-  setupButton(DOM.increaseQty, "increase");
-  setupButton(DOM.decreaseQty, "decrease");
+  // Eventos para desktop e mobile
+  newElement.addEventListener("mousedown", startAction);
+  newElement.addEventListener("touchstart", startAction);
+
+  // Eventos para parar
+  const stopEvents = ["mouseup", "mouseleave", "touchend", "touchcancel"];
+  stopEvents.forEach((event) => {
+    newElement.addEventListener(event, stopHold);
+  });
+
+  return newElement;
 }
 
+// Funções do carrinho
 function saveCart() {
   localStorage.setItem("carrinhoPastelaria", JSON.stringify(state.cart));
 }
@@ -1116,6 +1060,163 @@ function loadCart() {
   }
 }
 
+function updateCart() {
+  const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+  DOM.cartCount.textContent = totalItems;
+
+  if (state.cart.length === 0) {
+    if (!DOM.cartItems.querySelector(".empty-cart")) {
+      DOM.cartItems.innerHTML = `
+        <div class="empty-cart">
+          <i class="fas fa-shopping-basket"></i>
+          <p>Seu carrinho está vazio</p>
+        </div>
+      `;
+    }
+    DOM.cartTotal.textContent = "R$ 0,00";
+    return;
+  }
+
+  // Remove mensagem de carrinho vazio se existir
+  const emptyCart = DOM.cartItems.querySelector(".empty-cart");
+  if (emptyCart) {
+    emptyCart.remove();
+  }
+
+  let totalPrice = 0;
+  const fragment = document.createDocumentFragment();
+
+  // Atualiza ou cria os itens do carrinho
+  state.cart.forEach((item, index) => {
+    totalPrice += item.price * item.quantity;
+
+    let cartItem = DOM.cartItems.querySelector(`[data-index="${index}"]`);
+
+    if (!cartItem) {
+      // Se o item não existe, cria um novo
+      cartItem = createCartItem(item, index);
+      fragment.appendChild(cartItem);
+    } else {
+      // Se o item já existe, apenas atualiza os valores
+      updateCartItem(cartItem, item, index);
+    }
+  });
+
+  // Adiciona todos os novos itens de uma vez
+  if (fragment.childNodes.length > 0) {
+    DOM.cartItems.appendChild(fragment);
+  }
+
+  // Remove itens que não existem mais no state.cart
+  const existingIndices = state.cart.map((_, i) => i.toString());
+  document.querySelectorAll(".cart-item[data-index]").forEach((item) => {
+    if (!existingIndices.includes(item.dataset.index)) {
+      item.remove();
+    }
+  });
+
+  DOM.cartTotal.textContent = `R$ ${totalPrice.toFixed(2).replace(".", ",")}`;
+}
+
+function updateCartItem(cartItem, item, index) {
+  const itemPrice = item.price * item.quantity;
+
+  // Atualiza apenas os elementos que mudam
+  const quantityValue = cartItem.querySelector(".cart-item-quantity-value");
+  const priceElement = cartItem.querySelector(".cart-item-price");
+
+  if (quantityValue.textContent !== item.quantity.toString()) {
+    quantityValue.textContent = item.quantity;
+  }
+
+  const newPrice = `R$ ${itemPrice.toFixed(2).replace(".", ",")}`;
+  if (priceElement.textContent !== newPrice) {
+    priceElement.textContent = newPrice;
+  }
+
+  // Atualiza o botão de diminuir
+  const decreaseBtn = cartItem.querySelector(".quantity-btn");
+  const newClass = `quantity-btn ${item.quantity === 1 ? "remove" : ""}`;
+
+  if (decreaseBtn.className !== newClass) {
+    decreaseBtn.className = newClass;
+    decreaseBtn.innerHTML = `<i class="fas ${
+      item.quantity === 1 ? "fa-trash" : "fa-minus"
+    }"></i>`;
+
+    // Reconfigura os listeners
+    const increaseBtn = cartItem.querySelectorAll(".quantity-btn")[1];
+    setupQuantityControls(decreaseBtn, "decrease", index);
+    setupQuantityControls(increaseBtn, "increase", index);
+  }
+}
+
+function createCartItem(item, index) {
+  const cartItem = document.createElement("div");
+  cartItem.className = "cart-item slide-up";
+  cartItem.dataset.index = index;
+
+  const itemPrice = item.price * item.quantity;
+
+  let optionText = "";
+  if (item.selectedSize) {
+    optionText =
+      item.selectedSize === "pequeno"
+        ? "Pequeno"
+        : item.selectedSize === "grande"
+        ? "Grande"
+        : item.selectedSize === "unico"
+        ? "Único"
+        : item.selectedSize === "300ml"
+        ? "300ml"
+        : item.selectedSize === "500ml"
+        ? "500ml"
+        : item.selectedSize;
+  }
+  if (item.selectedFlavor) {
+    if (optionText) optionText += " - ";
+    optionText += item.flavors
+      ? item.flavors[item.selectedFlavor]
+      : item.selectedFlavor;
+  }
+
+  cartItem.innerHTML = `
+    <div class="cart-item-info">
+      <div class="cart-item-name">${item.name}</div>
+      ${optionText ? `<div class="cart-item-size">${optionText}</div>` : ""}
+      ${
+        item.notes
+          ? `<div class="cart-item-notes break-word">Obs: ${item.notes}</div>`
+          : ""
+      }
+    </div>
+    <div class="cart-item-controls">
+      <div class="cart-item-price">R$ ${itemPrice
+        .toFixed(2)
+        .replace(".", ",")}</div>
+      <div class="cart-item-quantity">
+        <button class="quantity-btn ${item.quantity === 1 ? "remove" : ""}">
+          <i class="fas ${item.quantity === 1 ? "fa-trash" : "fa-minus"}"></i>
+        </button>
+        <span class="cart-item-quantity-value">${item.quantity}</span>
+        <button class="quantity-btn">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Configura listeners para os botões
+  const decreaseBtn = cartItem.querySelectorAll(".quantity-btn")[0];
+  const increaseBtn = cartItem.querySelectorAll(".quantity-btn")[1];
+
+  setupQuantityControls(decreaseBtn, "decrease", index);
+  setupQuantityControls(increaseBtn, "increase", index);
+
+  return cartItem;
+}
+
+// Funções do menu
 function loadCategories() {
   DOM.categoryButtons.innerHTML = "";
 
@@ -1173,7 +1274,6 @@ function loadMenuItems() {
 
     let menuItemHTML = "";
 
-    // Adiciona a descrição se existir
     const descriptionHTML = item.description
       ? `<div class="menu-item-description">${item.description}</div>`
       : "";
@@ -1181,7 +1281,7 @@ function loadMenuItems() {
     if (item.hasImage) {
       menuItemHTML = `
         <div class="menu-item-image">
-          <img src="${item.image}" alt="${item.name} © 2023 Estevão Marques.">
+          <img src="${item.image}" alt="${item.name}">
         </div>
         <div class="menu-item-content">
           <h3 class="menu-item-title">${item.name}</h3>
@@ -1265,7 +1365,9 @@ function generateSizesHTML(sizes, item) {
   return sizesHTML;
 }
 
+// Funções do modal de observação
 function handleAddToCart(item) {
+  if (state.modalOpen) return;
   state.currentItem = item;
 
   if (item.acceptsObservation) {
@@ -1281,6 +1383,8 @@ function handleAddToCart(item) {
 }
 
 function openObservationModal() {
+  state.modalOpen = true;
+
   DOM.sizeSelect.value = "";
   DOM.flavorSelect.value = "";
   DOM.notesTextarea.value = "";
@@ -1290,7 +1394,7 @@ function openObservationModal() {
   DOM.flavorSelect.style.display = "none";
 
   if (state.currentItem.flavors) {
-    DOM.flavorSelect.style.display = "block";
+    DOM.flavorSelect.style.display = "flex";
     DOM.flavorSelect.innerHTML = '<option value="">Selecione um sabor</option>';
 
     const flavors = state.currentItem.flavors;
@@ -1303,7 +1407,7 @@ function openObservationModal() {
     state.currentItem.sizes &&
     Object.keys(state.currentItem.sizes).length > 0
   ) {
-    DOM.sizeSelect.style.display = "block";
+    DOM.sizeSelect.style.display = "flex";
     DOM.sizeSelect.innerHTML = '<option value="">Selecione um tamanho</option>';
 
     for (const size of Object.keys(state.currentItem.sizes)) {
@@ -1323,14 +1427,27 @@ function openObservationModal() {
     }
   }
 
-  DOM.observationModal.classList.add("open");
-  DOM.overlay.classList.add("open");
+  DOM.observationModal.style.display = "flex";
+  DOM.overlay.style.display = "flex";
+  setTimeout(() => {
+    DOM.observationModal.classList.add("open");
+    DOM.overlay.classList.add("open");
+  }, 10);
+
+  DOM.increaseQty = setupQuantityControls(DOM.increaseQty, "increase");
+  DOM.decreaseQty = setupQuantityControls(DOM.decreaseQty, "decrease");
 }
 
 function closeObservationModal() {
   DOM.observationModal.classList.remove("open");
   DOM.overlay.classList.remove("open");
-  state.currentItem = null;
+
+  setTimeout(() => {
+    DOM.observationModal.style.display = "none";
+    DOM.overlay.style.display = "none";
+    state.modalOpen = false;
+    state.currentItem = null;
+  }, 300);
 }
 
 function addToCart(itemData) {
@@ -1400,209 +1517,40 @@ function addToCart(itemData) {
   mostrarToast(`${quantity}x ${name} adicionado ao carrinho!`);
 }
 
-function updateCart() {
-  const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
-  DOM.cartCount.textContent = totalItems;
-
-  if (state.cart.length === 0) {
-    if (!DOM.cartItems.querySelector(".empty-cart")) {
-      DOM.cartItems.innerHTML = `
-        <div class="empty-cart">
-          <i class="fas fa-shopping-basket"></i>
-          <p>Seu carrinho está vazio</p>
-        </div>
-      `;
-    }
-    DOM.cartTotal.textContent = "R$ 0,00";
-    return;
-  }
-
-  const emptyCart = DOM.cartItems.querySelector(".empty-cart");
-  if (emptyCart) {
-    emptyCart.remove();
-  }
-
-  let totalPrice = 0;
-
-  state.cart.forEach((item, index) => {
-    totalPrice += item.price * item.quantity;
-
-    let cartItem = DOM.cartItems.querySelector(`[data-index="${index}"]`);
-
-    if (!cartItem) {
-      cartItem = createCartItem(item, index);
-      DOM.cartItems.appendChild(cartItem);
-    } else {
-      updateCartItem(cartItem, item, index);
-    }
-  });
-
-  const existingIndices = state.cart.map((_, i) => i.toString());
-  document.querySelectorAll(".cart-item[data-index]").forEach((item) => {
-    if (!existingIndices.includes(item.dataset.index)) {
-      item.remove();
-    }
-  });
-
-  DOM.cartTotal.textContent = `R$ ${totalPrice.toFixed(2).replace(".", ",")}`;
-}
-
-function createCartItem(item, index) {
-  const cartItem = document.createElement("div");
-  cartItem.className = "cart-item slide-up";
-  cartItem.dataset.index = index;
-
-  const itemPrice = item.price * item.quantity;
-
-  let optionText = "";
-  if (item.selectedSize) {
-    optionText =
-      item.selectedSize === "pequeno"
-        ? "Pequeno"
-        : item.selectedSize === "grande"
-        ? "Grande"
-        : item.selectedSize === "unico"
-        ? "Único"
-        : item.selectedSize === "300ml"
-        ? "300ml"
-        : item.selectedSize === "500ml"
-        ? "500ml"
-        : item.selectedSize;
-  }
-  if (item.selectedFlavor) {
-    if (optionText) optionText += " - ";
-    optionText += item.flavors
-      ? item.flavors[item.selectedFlavor]
-      : item.selectedFlavor;
-  }
-
-  cartItem.innerHTML = `
-    <div class="cart-item-info">
-      <div class="cart-item-name">${item.name}</div>
-      ${optionText ? `<div class="cart-item-size">${optionText}</div>` : ""}
-      ${
-        item.notes
-          ? `<div class="cart-item-notes break-word">Obs: ${item.notes}</div>`
-          : ""
-      }
-    </div>
-    <div class="cart-item-controls">
-      <div class="cart-item-price">R$ ${itemPrice
-        .toFixed(2)
-        .replace(".", ",")}</div>
-      <div class="cart-item-quantity">
-        <button class="quantity-btn ${item.quantity === 1 ? "remove" : ""}" 
-                data-index="${index}" data-action="decrease">
-          <i class="fas ${item.quantity === 1 ? "fa-trash" : "fa-minus"}"></i>
-        </button>
-        <span class="cart-item-quantity-value">${item.quantity}</span>
-        <button class="quantity-btn" data-index="${index}" data-action="increase">
-          <i class="fas fa-plus"></i>
-        </button>
-      </div>
-    </div>
-  `;
-
-  addQuantityButtonListeners(cartItem, index);
-  return cartItem;
-}
-
-function updateCartItem(cartItem, item, index) {
-  const itemPrice = item.price * item.quantity;
-
-  cartItem.querySelector(".cart-item-quantity-value").textContent =
-    item.quantity;
-  cartItem.querySelector(".cart-item-price").textContent = `R$ ${itemPrice
-    .toFixed(2)
-    .replace(".", ",")}`;
-
-  const decreaseBtn = cartItem.querySelector('[data-action="decrease"]');
-  decreaseBtn.className = `quantity-btn ${item.quantity === 1 ? "remove" : ""}`;
-  decreaseBtn.innerHTML = `<i class="fas ${
-    item.quantity === 1 ? "fa-trash" : "fa-minus"
-  }"></i>`;
-}
-
-function addQuantityButtonListeners(element, index) {
-  const increaseBtn = element.querySelector('[data-action="increase"]');
-  const decreaseBtn = element.querySelector('[data-action="decrease"]');
-
-  const setupButton = (btn, action) => {
-    btn.addEventListener("mousedown", () => startHold(action, index));
-    btn.addEventListener("mouseup", stopHold);
-    btn.addEventListener("mouseleave", stopHold);
-
-    btn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      startHold(action, index);
-    });
-    btn.addEventListener("touchend", stopHold);
-    btn.addEventListener("touchcancel", stopHold);
-  };
-
-  setupButton(increaseBtn, "increase");
-  setupButton(decreaseBtn, "decrease");
-}
-
-function handleQuantityClick(index, action) {
-  const item = state.cart[index];
-
-  if (action === "increase") {
-    if (item.quantity >= 100) {
-      mostrarToast(
-        `O item ${item.name} atingiu a quantidade máxima de 100 unidades!`
-      );
-      return;
-    }
-    item.quantity += 1;
-  } else if (action === "decrease") {
-    if (item.quantity > 1) {
-      item.quantity -= 1;
-    } else {
-      state.cart.splice(index, 1);
-    }
-  }
-
-  updateCart();
-  saveCart();
-}
-
+// Funções auxiliares
 function setupEventListeners() {
   DOM.cartBtn.addEventListener("click", () => {
-    DOM.cartModal.classList.add("open");
-    DOM.overlay.classList.add("open");
+    if (state.modalOpen) return;
+    DOM.cartModal.style.display = "block";
+    DOM.overlay.style.display = "block";
+    setTimeout(() => {
+      DOM.cartModal.classList.add("open");
+      DOM.overlay.classList.add("open");
+    }, 10);
   });
 
   DOM.closeCart.addEventListener("click", () => {
     DOM.cartModal.classList.remove("open");
     DOM.overlay.classList.remove("open");
+    setTimeout(() => {
+      DOM.cartModal.style.display = "none";
+      DOM.overlay.style.display = "none";
+    }, 300);
   });
 
   DOM.closeObservation.addEventListener("click", closeObservationModal);
+
   DOM.overlay.addEventListener("click", () => {
     DOM.cartModal.classList.remove("open");
     DOM.observationModal.classList.remove("open");
     DOM.overlay.classList.remove("open");
+    setTimeout(() => {
+      DOM.cartModal.style.display = "none";
+      DOM.observationModal.style.display = "none";
+      DOM.overlay.style.display = "none";
+      state.modalOpen = false;
+    }, 300);
   });
-
-  DOM.decreaseQty.addEventListener("mousedown", () => {
-    startHold("decrease");
-  });
-
-  DOM.decreaseQty.addEventListener("touchstart", () => {
-    startHold("decrease");
-  });
-
-  DOM.increaseQty.addEventListener("mousedown", () => {
-    startHold("increase");
-  });
-
-  DOM.increaseQty.addEventListener("touchstart", () => {
-    startHold("increase");
-  });
-
-  DOM.decreaseQty.addEventListener("mouseleave", stopHold);
-  DOM.increaseQty.addEventListener("mouseleave", stopHold);
 
   DOM.addToCartFinal.addEventListener("click", () => {
     if (state.currentItem.sizes && !DOM.sizeSelect.value) {
@@ -1623,6 +1571,7 @@ function setupEventListeners() {
       notes: DOM.notesTextarea.value,
     });
   });
+
   DOM.checkoutBtn.addEventListener("click", () => {
     if (state.cart.length === 0) {
       mostrarToast("Seu carrinho está vazio!");
@@ -1703,6 +1652,40 @@ function sendWhatsAppOrder() {
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
 
   window.open(whatsappUrl, "_blank");
+}
+
+// Inicialização
+function init() {
+  setTimeout(() => {
+    DOM.loadingScreen.style.display = "none";
+  }, 500);
+
+  loadCategories();
+  loadMenuItems();
+  setupEventListeners();
+  loadCart();
+  updateCart();
+
+  // Configura os controles de quantidade iniciais
+  DOM.increaseQty = setupQuantityControls(DOM.increaseQty, "increase");
+  DOM.decreaseQty = setupQuantityControls(DOM.decreaseQty, "decrease");
+
+  // Adiciona um listener global para limpar estados
+  document.addEventListener("mouseup", () => {
+    [DOM.increaseQty, DOM.decreaseQty].forEach((btn) => {
+      btn.blur();
+      btn.style.transform = "none";
+      btn.style.boxShadow = "none";
+    });
+  });
+
+  document.addEventListener("touchend", () => {
+    [DOM.increaseQty, DOM.decreaseQty].forEach((btn) => {
+      btn.blur();
+      btn.style.transform = "none";
+      btn.style.boxShadow = "none";
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);
