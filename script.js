@@ -940,7 +940,6 @@ const menuData = [
 // Button to scroll to top
 const btn = document.getElementById("btnTopo");
 
-// Show/hide scroll-to-top button based on scroll position
 window.addEventListener("scroll", () => {
   if (window.scrollY > 100) {
     btn.classList.add("show");
@@ -949,7 +948,6 @@ window.addEventListener("scroll", () => {
   }
 });
 
-// Smooth scroll to top when button is clicked
 btn.addEventListener("click", () => {
   window.scrollTo({
     top: 0,
@@ -1038,10 +1036,9 @@ let state = {
   currentItem: null,
   selectedCategory: null,
   modalOpen: false,
-  cartItemId: 0, // Contador para IDs únicos no carrinho
+  cartItemId: 0, 
 };
 
-// Scroll control functions
 function lockBodyScroll() {
   if (isScrollLocked) return;
 
@@ -1086,7 +1083,6 @@ function performQuantityAction(action, cartItemId = null, event = null) {
       }
       item.quantity += 1;
     } else if (action === "decrease") {
-      // Verifica se foi um clique no ícone de lixeira
       const isTrashClick = event && 
                           event.target && 
                           event.target.classList && 
@@ -1095,7 +1091,6 @@ function performQuantityAction(action, cartItemId = null, event = null) {
       if (item.quantity > 1) {
         item.quantity -= 1;
       } else if (isTrashClick) {
-        // Só remove se foi um clique explícito no ícone de lixeira
         removeCartItemWithAnimation(cartItemId);
         stopHold();
         return;
@@ -1144,7 +1139,6 @@ function setupQuantityControls(element, action, cartItemId = null) {
   const newElement = element.cloneNode(true);
   element.replaceWith(newElement);
 
-  // Adicione um listener para clique simples
   newElement.addEventListener("click", (e) => {
     e.preventDefault();
     performQuantityAction(action, cartItemId, e);
@@ -1172,7 +1166,6 @@ function setupQuantityControls(element, action, cartItemId = null) {
   return newElement;
 }
 
-// Cart management functions
 function saveCart() {
   localStorage.setItem("carrinhoPastelaria", JSON.stringify(state.cart));
 }
@@ -1181,7 +1174,6 @@ function loadCart() {
   const carrinhoSalvo = localStorage.getItem("carrinhoPastelaria");
   if (carrinhoSalvo) {
     state.cart = JSON.parse(carrinhoSalvo);
-    // Garantir que cada item no carrinho tenha um ID único
     if (state.cart.length > 0 && !state.cart[0].cartItemId) {
       state.cart.forEach((item, index) => {
         item.cartItemId = `cart-${index}`;
@@ -1197,7 +1189,6 @@ function updateCartTotal() {
   DOM.cartTotal.textContent = `R$ ${totalPrice.toFixed(2).replace(".", ",")}`;
 }
 
-// E modificar a função updateCart para usar essa função:
 function updateCart() {
   const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
   DOM.cartCount.textContent = totalItems;
@@ -1211,7 +1202,7 @@ function updateCart() {
         </div>
       `;
     }
-    updateCartTotal(); // Atualiza o total mesmo quando vazio
+    updateCartTotal();
     return;
   }
 
@@ -1220,7 +1211,6 @@ function updateCart() {
     emptyCart.remove();
   }
 
-  // Mapear itens existentes por ID
   const existingItemsMap = new Map();
   Array.from(DOM.cartItems.querySelectorAll(".cart-item")).forEach(item => {
     existingItemsMap.set(item.dataset.id, item);
@@ -1241,7 +1231,6 @@ function updateCart() {
     }
   });
 
-  // Remover itens que não estão mais no carrinho
   const currentCartIds = new Set(state.cart.map(item => item.cartItemId));
   existingItemsMap.forEach((item, id) => {
     if (!currentCartIds.has(id)) {
@@ -1274,13 +1263,13 @@ function updateCartItem(item) {
     decreaseBtn.className = newClass;
     decreaseBtn.innerHTML = `<i class="fas ${item.quantity === 1 ? "fa-trash" : "fa-minus"}"></i>`;
     
-    // Reconfigura os controles
+   
     const increaseBtn = cartItem.querySelectorAll(".quantity-btn")[1];
     setupQuantityControls(decreaseBtn, "decrease", item.cartItemId);
     setupQuantityControls(increaseBtn, "increase", item.cartItemId);
   }
   
-  updateCartTotal(); // Adicionado para atualizar o total quando um item é modificado
+  updateCartTotal(); 
 }
 
 function createCartItem(item) {
@@ -1351,7 +1340,7 @@ function createCartItem(item) {
   return cartItem;
 }
 
-// Menu display functions
+
 function loadCategories() {
   DOM.categoryButtons.innerHTML = "";
 
@@ -1496,7 +1485,7 @@ function generateSizesHTML(sizes, item) {
   return sizesHTML;
 }
 
-// Cart item handling functions
+
 function handleAddToCart(item) {
   if (state.modalOpen) return;
   state.currentItem = item;
@@ -1724,7 +1713,7 @@ function setupEventListeners() {
   });
 }
 
-// Notification function
+// Notification function lembrar que ele recebe uma string!
 function mostrarToast(mensagem) {
   Toastify({
     text: mensagem,
@@ -1738,7 +1727,7 @@ function mostrarToast(mensagem) {
   }).showToast();
 }
 
-// WhatsApp order function
+// WhatsApp order function não mexer!
 function sendWhatsAppOrder() {
   const phoneNumber = "47996870409";
   let message = "🍟 *Olá Pastelaria Berbigão!* 🍔\n";
@@ -1795,9 +1784,7 @@ function sendWhatsAppOrder() {
   window.open(whatsappUrl, "_blank");
 }
 
-// Initialization function
 function init() {
-  // Adiciona estilos CSS dinamicamente para as animações
   const style = document.createElement("style");
   style.textContent = `
     .cart-item {
