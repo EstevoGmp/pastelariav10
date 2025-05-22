@@ -1064,7 +1064,7 @@ function unlockBodyScroll() {
   isScrollLocked = false;
 }
 
-function performQuantityAction(action, cartItemId = null) {
+function performQuantityAction(action, cartItemId = null, event = null) {
   if (cartItemId !== null) {
     const itemIndex = state.cart.findIndex(item => item.cartItemId === cartItemId);
     if (itemIndex === -1) {
@@ -1086,17 +1086,23 @@ function performQuantityAction(action, cartItemId = null) {
       }
       item.quantity += 1;
     } else if (action === "decrease") {
-      // Modificação aqui - só remove se for hold, não no clique rápido
-      if (holdInterval && item.quantity === 1) {
+      // Verifica se foi um clique no ícone de lixeira
+      const isTrashClick = event && 
+                          event.target && 
+                          event.target.classList && 
+                          event.target.classList.contains('fa-trash');
+      
+      if (item.quantity > 1) {
+        item.quantity -= 1;
+      } else if (isTrashClick) {
+        // Só remove se foi um clique explícito no ícone de lixeira
         removeCartItemWithAnimation(cartItemId);
         stopHold();
         return;
-      } else if (item.quantity > 1) {
-        item.quantity -= 1;
       }
     }
     updateCartItem(item);
-    updateCartTotal(); // Adicionado para atualizar o total
+    updateCartTotal();
     saveCart();
   } else {
     let quantity = parseInt(DOM.quantityValue.textContent);
@@ -1138,12 +1144,18 @@ function setupQuantityControls(element, action, cartItemId = null) {
   const newElement = element.cloneNode(true);
   element.replaceWith(newElement);
 
+  // Adicione um listener para clique simples
+  newElement.addEventListener("click", (e) => {
+    e.preventDefault();
+    performQuantityAction(action, cartItemId, e);
+  });
+
   const startAction = (e) => {
     e.preventDefault();
-    performQuantityAction(action, cartItemId);
+    performQuantityAction(action, cartItemId, e);
     holdTimeout = setTimeout(() => {
       holdInterval = setInterval(
-        () => performQuantityAction(action, cartItemId),
+        () => performQuantityAction(action, cartItemId, e),
         HOLD_INTERVAL
       );
     }, HOLD_DELAY);
